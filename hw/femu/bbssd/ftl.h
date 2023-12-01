@@ -82,7 +82,7 @@ struct nand_block {
     int npgs;
     int ipc; /* invalid page count */
     int vpc; /* valid page count */
-    int erase_cnt;
+    int erase_cnt; //
     int wp; /* current write pointer */
 };
 
@@ -154,6 +154,9 @@ struct ssdparams {
     int tt_pls;       /* total # of planes in the SSD */
 
     int tt_luns;      /* total # of LUNs in the SSD */
+
+    int gc_alpha;
+    int gc_beta;
 };
 
 typedef struct line {

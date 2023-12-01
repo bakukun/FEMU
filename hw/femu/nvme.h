@@ -264,10 +264,10 @@ enum NvmeCmbszMask {
 #define NVME_CMBSZ_GETSIZE(cmbsz) (NVME_CMBSZ_SZ(cmbsz) * (1<<(12+4*NVME_CMBSZ_SZU(cmbsz))))
 
 typedef struct QEMU_PACKED NvmeSglDescriptor {
-    uint64_t addr;
-    uint32_t len;
-    uint8_t  rsvd[3];
-    uint8_t  type;
+        uint64_t addr;
+        uint32_t len;
+        uint8_t  rsvd[3];
+        uint8_t  type;
 } NvmeSglDescriptor;
 
 #define NVME_SGL_TYPE(type)     ((type >> 4) & 0xf)
@@ -685,70 +685,70 @@ enum NvmeIdCns {
 };
 
 typedef struct QEMU_PACKED NvmeIdCtrl {
-    uint16_t    vid;
-    uint16_t    ssvid;
-    uint8_t     sn[20];
-    uint8_t     mn[40];
-    uint8_t     fr[8];
-    uint8_t     rab;
-    uint8_t     ieee[3];
-    uint8_t     cmic;
-    uint8_t     mdts;
-    uint16_t    cntlid;
-    uint32_t    ver;
-    uint32_t    rtd3r;
-    uint32_t    rtd3e;
-    uint32_t    oaes;
-    uint32_t    ctratt;
-    uint8_t     rsvd100[12];
-    uint8_t     fguid[16];
-    uint8_t     rsvd128[128];
-    uint16_t    oacs;
-    uint8_t     acl;
-    uint8_t     aerl;
-    uint8_t     frmw;
-    uint8_t     lpa;
-    uint8_t     elpe;
-    uint8_t     npss;
-    uint8_t     avscc;
-    uint8_t     apsta;
-    uint16_t    wctemp;
-    uint16_t    cctemp;
-    uint16_t    mtfa;
-    uint32_t    hmpre;
-    uint32_t    hmmin;
-    uint8_t     tnvmcap[16];
-    uint8_t     unvmcap[16];
-    uint32_t    rpmbs;
-    uint16_t    edstt;
-    uint8_t     dsto;
-    uint8_t     fwug;
-    uint16_t    kas;
-    uint16_t    hctma;
-    uint16_t    mntmt;
-    uint16_t    mxtmt;
-    uint32_t    sanicap;
-    uint8_t     rsvd332[180];
-    uint8_t     sqes;
-    uint8_t     cqes;
-    uint16_t    maxcmd;
-    uint32_t    nn;
-    uint16_t    oncs;
-    uint16_t    fuses;
-    uint8_t     fna;
-    uint8_t     vwc;
-    uint16_t    awun;
-    uint16_t    awupf;
-    uint8_t     nvscc;
-    uint8_t     rsvd531;
-    uint16_t    acwu;
-    uint8_t     rsvd534[2];
-    uint32_t    sgls;
-    uint8_t     rsvd540[228];
-    uint8_t     subnqn[256];
-    uint8_t     rsvd1024[1024];
-    NvmePSD     psd[32];
-    uint8_t     vs[1024];
+        uint16_t    vid;
+        uint16_t    ssvid;
+        uint8_t     sn[20];
+        uint8_t     mn[40];
+        uint8_t     fr[8];
+        uint8_t     rab;
+        uint8_t     ieee[3];
+        uint8_t     cmic;
+        uint8_t     mdts;
+        uint16_t    cntlid;
+        uint32_t    ver;
+        uint32_t    rtd3r;
+        uint32_t    rtd3e;
+        uint32_t    oaes;
+        uint32_t    ctratt;
+        uint8_t     rsvd100[12];
+        uint8_t     fguid[16];
+        uint8_t     rsvd128[128];
+        uint16_t    oacs;
+        uint8_t     acl;
+        uint8_t     aerl;
+        uint8_t     frmw;
+        uint8_t     lpa;
+        uint8_t     elpe;
+        uint8_t     npss;
+        uint8_t     avscc;
+        uint8_t     apsta;
+        uint16_t    wctemp;
+        uint16_t    cctemp;
+        uint16_t    mtfa;
+        uint32_t    hmpre;
+        uint32_t    hmmin;
+        uint8_t     tnvmcap[16];
+        uint8_t     unvmcap[16];
+        uint32_t    rpmbs;
+        uint16_t    edstt;
+        uint8_t     dsto;
+        uint8_t     fwug;
+        uint16_t    kas;
+        uint16_t    hctma;
+        uint16_t    mntmt;
+        uint16_t    mxtmt;
+        uint32_t    sanicap;
+        uint8_t     rsvd332[180];
+        uint8_t     sqes;
+        uint8_t     cqes;
+        uint16_t    maxcmd;
+        uint32_t    nn;
+        uint16_t    oncs;
+        uint16_t    fuses;
+        uint8_t     fna;
+        uint8_t     vwc;
+        uint16_t    awun;
+        uint16_t    awupf;
+        uint8_t     nvscc;
+        uint8_t     rsvd531;
+        uint16_t    acwu;
+        uint8_t     rsvd534[2];
+        uint32_t    sgls;
+        uint8_t     rsvd540[228];
+        uint8_t     subnqn[256];
+        uint8_t     rsvd1024[1024];
+        NvmePSD     psd[32];
+        uint8_t     vs[1024];
 } NvmeIdCtrl;
 
 enum NvmeIdCtrlOacs {
@@ -892,9 +892,9 @@ typedef struct NvmeIdNs {
 } NvmeIdNs;
 
 typedef struct QEMU_PACKED NvmeIdNsDescr {
-    uint8_t nidt;
-    uint8_t nidl;
-    uint8_t rsvd2[2];
+        uint8_t nidt;
+        uint8_t nidl;
+        uint8_t rsvd2[2];
 } NvmeIdNsDescr;
 
 enum NvmeNsIdentifierLength {
@@ -1163,6 +1163,9 @@ typedef struct BbCtrlParams {
 
     int gc_thres_pcent;
     int gc_thres_pcent_high;
+
+    int gc_alpha;
+    int gc_beta;
 } BbCtrlParams;
 
 typedef struct ZNSCtrlParams {
@@ -1306,8 +1309,8 @@ typedef struct FemuCtrl {
     QEMUTimer       *aer_timer;
     uint8_t         aer_mask;
 
-	uint64_t		dbs_addr;
-	uint64_t		eis_addr;
+    uint64_t		dbs_addr;
+    uint64_t		eis_addr;
     uint64_t        dbs_addr_hva;
     uint64_t        eis_addr_hva;
 
@@ -1424,12 +1427,12 @@ uint8_t nvme_cq_full(NvmeCQueue *cq);
 uint8_t nvme_sq_empty(NvmeSQueue *sq);
 void nvme_update_sq_tail(NvmeSQueue *sq);
 uint16_t nvme_init_sq(NvmeSQueue *sq, FemuCtrl *n, uint64_t dma_addr, uint16_t
-                      sqid, uint16_t cqid, uint16_t size, enum NvmeQueueFlags
+sqid, uint16_t cqid, uint16_t size, enum NvmeQueueFlags
                       prio, int contig);
 void nvme_free_sq(NvmeSQueue *sq, FemuCtrl *n);
 void nvme_free_cq(NvmeCQueue *cq, FemuCtrl *n);
 uint16_t nvme_init_cq(NvmeCQueue *cq, FemuCtrl *n, uint64_t dma_addr, uint16_t
-                      cqid, uint16_t vector, uint16_t size, uint16_t
+cqid, uint16_t vector, uint16_t size, uint16_t
                       irq_enabled, int contig);
 void nvme_set_ctrl_name(FemuCtrl *n, const char *mn, const char *sn, int *dev_id);
 
@@ -1445,16 +1448,16 @@ void     nvme_addr_write(FemuCtrl *n, hwaddr addr, void *buf, int size);
 uint16_t nvme_map_prp(QEMUSGList *qsg, QEMUIOVector *iov, uint64_t prp1,
                       uint64_t prp2, uint32_t len, FemuCtrl *n);
 uint16_t dma_write_prp(FemuCtrl *n, uint8_t *ptr, uint32_t len, uint64_t
-                            prp1, uint64_t prp2);
+prp1, uint64_t prp2);
 uint16_t dma_read_prp(FemuCtrl *n, uint8_t *ptr, uint32_t len, uint64_t
-                           prp1, uint64_t prp2);
+prp1, uint64_t prp2);
 
 
 /* Misc */
 uint64_t *nvme_setup_discontig(FemuCtrl *n, uint64_t prp_addr, uint16_t
-                               queue_depth, uint16_t entry_size);
+queue_depth, uint16_t entry_size);
 void nvme_set_error_page(FemuCtrl *n, uint16_t sqid, uint16_t cid, uint16_t
-                         status, uint16_t location, uint64_t lba, uint32_t
+status, uint16_t location, uint64_t lba, uint32_t
                          nsid);
 uint16_t femu_nvme_rw_check_req(FemuCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
                                 NvmeRequest *req, uint64_t slba, uint64_t elba,

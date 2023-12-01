@@ -98,8 +98,8 @@ static void ssd_init_lines(struct ssd *ssd)
 
     QTAILQ_INIT(&lm->free_line_list);
     lm->victim_line_pq = pqueue_init(spp->tt_lines, victim_line_cmp_pri,
-            victim_line_get_pri, victim_line_set_pri,
-            victim_line_get_pos, victim_line_set_pos);
+                                     victim_line_get_pri, victim_line_set_pri,
+                                     victim_line_get_pos, victim_line_set_pos);
     QTAILQ_INIT(&lm->full_line_list);
 
     lm->free_line_cnt = 0;
@@ -410,8 +410,8 @@ static inline bool valid_ppa(struct ssd *ssd, struct ppa *ppa)
     int sec = ppa->g.sec;
 
     if (ch >= 0 && ch < spp->nchs && lun >= 0 && lun < spp->luns_per_ch && pl >=
-        0 && pl < spp->pls_per_lun && blk >= 0 && blk < spp->blks_per_pl && pg
-        >= 0 && pg < spp->pgs_per_blk && sec >= 0 && sec < spp->secs_per_pg)
+                                                                           0 && pl < spp->pls_per_lun && blk >= 0 && blk < spp->blks_per_pl && pg
+                                                                                                                                               >= 0 && pg < spp->pgs_per_blk && sec >= 0 && sec < spp->secs_per_pg)
         return true;
 
     return false;
@@ -473,14 +473,14 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
     uint64_t lat = 0;
 
     switch (c) {
-    case NAND_READ:
-        /* read: perform NAND cmd first */
-        nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
+        case NAND_READ:
+            /* read: perform NAND cmd first */
+            nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
                      lun->next_lun_avail_time;
-        lun->next_lun_avail_time = nand_stime + spp->pg_rd_lat;
-        lat = lun->next_lun_avail_time - cmd_stime;
+            lun->next_lun_avail_time = nand_stime + spp->pg_rd_lat;
+            lat = lun->next_lun_avail_time - cmd_stime;
 #if 0
-        lun->next_lun_avail_time = nand_stime + spp->pg_rd_lat;
+            lun->next_lun_avail_time = nand_stime + spp->pg_rd_lat;
 
         /* read: then data transfer through channel */
         chnl_stime = (ch->next_ch_avail_time < lun->next_lun_avail_time) ? \
@@ -489,21 +489,21 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
 
         lat = ch->next_ch_avail_time - cmd_stime;
 #endif
-        break;
+            break;
 
-    case NAND_WRITE:
-        /* write: transfer data through channel first */
-        nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
+        case NAND_WRITE:
+            /* write: transfer data through channel first */
+            nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
                      lun->next_lun_avail_time;
-        if (ncmd->type == USER_IO) {
-            lun->next_lun_avail_time = nand_stime + spp->pg_wr_lat;
-        } else {
-            lun->next_lun_avail_time = nand_stime + spp->pg_wr_lat;
-        }
-        lat = lun->next_lun_avail_time - cmd_stime;
+            if (ncmd->type == USER_IO) {
+                lun->next_lun_avail_time = nand_stime + spp->pg_wr_lat;
+            } else {
+                lun->next_lun_avail_time = nand_stime + spp->pg_wr_lat;
+            }
+            lat = lun->next_lun_avail_time - cmd_stime;
 
 #if 0
-        chnl_stime = (ch->next_ch_avail_time < cmd_stime) ? cmd_stime : \
+            chnl_stime = (ch->next_ch_avail_time < cmd_stime) ? cmd_stime : \
                      ch->next_ch_avail_time;
         ch->next_ch_avail_time = chnl_stime + spp->ch_xfer_lat;
 
@@ -514,19 +514,19 @@ static uint64_t ssd_advance_status(struct ssd *ssd, struct ppa *ppa, struct
 
         lat = lun->next_lun_avail_time - cmd_stime;
 #endif
-        break;
+            break;
 
-    case NAND_ERASE:
-        /* erase: only need to advance NAND status */
-        nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
+        case NAND_ERASE:
+            /* erase: only need to advance NAND status */
+            nand_stime = (lun->next_lun_avail_time < cmd_stime) ? cmd_stime : \
                      lun->next_lun_avail_time;
-        lun->next_lun_avail_time = nand_stime + spp->blk_er_lat;
+            lun->next_lun_avail_time = nand_stime + spp->blk_er_lat;
 
-        lat = lun->next_lun_avail_time - cmd_stime;
-        break;
+            lat = lun->next_lun_avail_time - cmd_stime;
+            break;
 
-    default:
-        ftl_err("Unsupported NAND command: 0x%x\n", c);
+        default:
+            ftl_err("Unsupported NAND command: 0x%x\n", c);
     }
 
     return lat;
@@ -763,11 +763,10 @@ static int do_gc(struct ssd *ssd, bool force)
     struct nand_lun *lunp;
     struct ppa ppa;
     int ch, lun;
-    long total_erase_cnt = 0;
 
-    //ppa.g.blk = victim_line->id;
-    //ppa.g.ch = 0;
-    //ppa.g.lun = 0;
+    ppa.g.blk = victim_line->id;
+    ppa.g.ch = 0;
+    ppa.g.lun = 0;
 
     victim_line = select_victim_line(ssd, force);
     if (!victim_line) {
@@ -789,11 +788,6 @@ static int do_gc(struct ssd *ssd, bool force)
             clean_one_block(ssd, &ppa);
             mark_block_free(ssd, &ppa);
 
-            if (ppa.g.blk == victim_line->id) {
-                struct nand_block *blk = get_blk(ssd, &ppa);
-                total_erase_cnt += blk->erase_cnt;
-            }
-
             if (spp->enable_gc_delay) {
                 struct nand_cmd gce;
                 gce.type = GC_IO;
@@ -809,29 +803,11 @@ static int do_gc(struct ssd *ssd, bool force)
     /* update line status */
     mark_line_free(ssd, &ppa);
 
-    if (total_erase_cnt >= DEAD_PE) {
-        printf("Erase count exceed 64");
-        printf("Total Write I/O count: %d\n", io_count_WRITE);
-        /*
-        for (int line_id = 0; line_id < ssd->sp.blks_per_lun; line_id++) {
-                if (line_id == victim_line->id) continue;
-                long line_total_erase_cnt = 0;
-                for (int i = 0; i < ssd->sp.nchs; i++) {
-                    ppa.g.ch = i;
-                    for (int j = 0; j < ssd->sp.luns_per_ch; j++) {
-                        ppa.g.lun = j;
-                        for (int k = 0; k < ssd->sp.pls_per_lun; k++) {
-                            ppa.g.pl = k;
-                            ppa.g.blk = line_id;
-                            struct nand_block *block = get_blk(ssd, &ppa);
-                            line_total_erase_cnt += block->erase_cnt;
-                        }
-                    }
-                }
-                printf("Line %d total erase count: %ld\n", line_id, line_total_erase_cnt);
-            }
-        */
-        /*
+    // check erase_cnt 64
+    struct nand_block *blk = get_blk(ssd, &ppa);
+    if (blk->erase_cnt >= DEAD_PE) {
+        printf("[Erase count exceed 64]  ");
+        printf("[Total Write I/O count: %d ]  ", io_count_WRITE);
         for (int i = 0; i < ssd->sp.nchs; i++) {
             ppa.g.ch = i;
             struct ssd_channel *channel = get_ch(ssd, &ppa);
@@ -844,8 +820,6 @@ static int do_gc(struct ssd *ssd, bool force)
                 }
             }
         }
-        */
-
         exit(0);
     }
     return 0;
@@ -973,18 +947,18 @@ static void *ftl_thread(void *arg)
 
             ftl_assert(req);
             switch (req->cmd.opcode) {
-            case NVME_CMD_WRITE:
-                lat = ssd_write(ssd, req);
-                break;
-            case NVME_CMD_READ:
-                lat = ssd_read(ssd, req);
-                break;
-            case NVME_CMD_DSM:
-                lat = 0;
-                break;
-            default:
-                //ftl_err("FTL received unkown request type, ERROR\n");
-                ;
+                case NVME_CMD_WRITE:
+                    lat = ssd_write(ssd, req);
+                    break;
+                case NVME_CMD_READ:
+                    lat = ssd_read(ssd, req);
+                    break;
+                case NVME_CMD_DSM:
+                    lat = 0;
+                    break;
+                default:
+                    //ftl_err("FTL received unkown request type, ERROR\n");
+                    ;
             }
 
             req->reqlat = lat;
