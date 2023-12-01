@@ -1,6 +1,11 @@
 #include "ftl.h"
+#include <time.h>
 
 //#define FEMU_DEBUG_FTL
+#define PQUEUE_MAX_PRIORITY 100000000
+#define DEAD_PE 64
+static int io_count_WRITE = 0;
+
 
 static void *ftl_thread(void *arg);
 
@@ -178,13 +183,13 @@ static void ssd_advance_write_pointer(struct ssd *ssd)
                 if (wpp->curline->vpc == spp->pgs_per_line) {
                     /* all pgs are still valid, move to full line list */
                     ftl_assert(wpp->curline->ipc == 0);
-                    QTAILQ_INSERT_TAIL(&lm->full_line_list, wpp->curline, entry);
+                    QTAILQ_INSERT_TAIL(&lm->full_line_list, wpp->curline, entry); //!
                     lm->full_line_cnt++;
                 } else {
                     ftl_assert(wpp->curline->vpc >= 0 && wpp->curline->vpc < spp->pgs_per_line);
                     /* there must be some invalid pages in this line */
                     ftl_assert(wpp->curline->ipc > 0);
-                    pqueue_insert(lm->victim_line_pq, wpp->curline);
+                    pqueue_insert(lm->victim_line_pq, wpp->curline); //!
                     lm->victim_line_cnt++;
                 }
                 /* current line is used up, pick another empty line */
@@ -207,6 +212,7 @@ static void ssd_advance_write_pointer(struct ssd *ssd)
         }
     }
 }
+
 
 static struct ppa get_new_page(struct ssd *ssd)
 {
@@ -280,6 +286,8 @@ static void ssd_init_params(struct ssdparams *spp, FemuCtrl *n)
     spp->gc_thres_lines = (int)((1 - spp->gc_thres_pcent) * spp->tt_lines);
     spp->gc_thres_pcent_high = n->bb_params.gc_thres_pcent_high/100.0;
     spp->gc_thres_lines_high = (int)((1 - spp->gc_thres_pcent_high) * spp->tt_lines);
+    spp->gc_alpha = n->bb_params.gc_alpha;
+    spp->gc_beta = n->bb_params.gc_beta;
     spp->enable_gc_delay = true;
 
 
@@ -567,7 +575,7 @@ static void mark_page_invalid(struct ssd *ssd, struct ppa *ppa)
         /* move line: "full" -> "victim" */
         QTAILQ_REMOVE(&lm->full_line_list, line, entry);
         lm->full_line_cnt--;
-        pqueue_insert(lm->victim_line_pq, line);
+        pqueue_insert(lm->victim_line_pq, line); //!
         lm->victim_line_cnt++;
     }
 }
@@ -662,24 +670,51 @@ static uint64_t gc_write_page(struct ssd *ssd, struct ppa *old_ppa)
     new_lun = get_lun(ssd, &new_ppa);
     new_lun->gc_endtime = new_lun->next_lun_avail_time;
 
+
     return 0;
+}
+
+static pqueue_pri_t get_victim_priority(line *line, struct ssd *ssd)
+{
+    struct ssdparams *spp = &ssd->sp;
+    struct ppa ppa;
+    ppa.ppa = 0;
+    ppa.g.blk = line->id;
+    double ALPHA = (double) spp->gc_alpha;
+    double BETA = (double) spp->gc_beta;
+
+    long vpc = line->vpc;
+    long ttpc = spp->pgs_per_line;
+    long ec = get_blk(ssd, &ppa)->erase_cnt;
+
+    return (pqueue_pri_t)( ((vpc<<10)/ttpc)*ALPHA + ((ec<<10)/DEAD_PE)*BETA );
 }
 
 static struct line *select_victim_line(struct ssd *ssd, bool force)
 {
     struct line_mgmt *lm = &ssd->lm;
     struct line *victim_line = NULL;
+    pqueue_pri_t min_victim_score = PQUEUE_MAX_PRIORITY;
 
-    victim_line = pqueue_peek(lm->victim_line_pq);
+
+    for (int i = 0; i < pqueue_size(lm->victim_line_pq); i++) {
+        struct line *line = (struct line *)pqueue_pop(lm->victim_line_pq);
+
+        pqueue_pri_t victim_score = get_victim_priority(line, ssd);
+
+        if (victim_score < min_victim_score) {
+            min_victim_score = victim_score;
+            victim_line = line;
+        }
+
+        pqueue_insert(lm->victim_line_pq, line);
+    }
+
     if (!victim_line) {
         return NULL;
     }
 
-    if (!force && victim_line->ipc < ssd->sp.pgs_per_line / 8) {
-        return NULL;
-    }
-
-    pqueue_pop(lm->victim_line_pq);
+    pqueue_remove(lm->victim_line_pq, victim_line);
     victim_line->pos = 0;
     lm->victim_line_cnt--;
 
@@ -728,6 +763,11 @@ static int do_gc(struct ssd *ssd, bool force)
     struct nand_lun *lunp;
     struct ppa ppa;
     int ch, lun;
+    long total_erase_cnt = 0;
+
+    //ppa.g.blk = victim_line->id;
+    //ppa.g.ch = 0;
+    //ppa.g.lun = 0;
 
     victim_line = select_victim_line(ssd, force);
     if (!victim_line) {
@@ -749,6 +789,11 @@ static int do_gc(struct ssd *ssd, bool force)
             clean_one_block(ssd, &ppa);
             mark_block_free(ssd, &ppa);
 
+            if (ppa.g.blk == victim_line->id) {
+                struct nand_block *blk = get_blk(ssd, &ppa);
+                total_erase_cnt += blk->erase_cnt;
+            }
+
             if (spp->enable_gc_delay) {
                 struct nand_cmd gce;
                 gce.type = GC_IO;
@@ -764,6 +809,45 @@ static int do_gc(struct ssd *ssd, bool force)
     /* update line status */
     mark_line_free(ssd, &ppa);
 
+    if (total_erase_cnt >= DEAD_PE) {
+        printf("Erase count exceed 64");
+        printf("Total Write I/O count: %d\n", io_count_WRITE);
+        /*
+        for (int line_id = 0; line_id < ssd->sp.blks_per_lun; line_id++) {
+                if (line_id == victim_line->id) continue;
+                long line_total_erase_cnt = 0;
+                for (int i = 0; i < ssd->sp.nchs; i++) {
+                    ppa.g.ch = i;
+                    for (int j = 0; j < ssd->sp.luns_per_ch; j++) {
+                        ppa.g.lun = j;
+                        for (int k = 0; k < ssd->sp.pls_per_lun; k++) {
+                            ppa.g.pl = k;
+                            ppa.g.blk = line_id;
+                            struct nand_block *block = get_blk(ssd, &ppa);
+                            line_total_erase_cnt += block->erase_cnt;
+                        }
+                    }
+                }
+                printf("Line %d total erase count: %ld\n", line_id, line_total_erase_cnt);
+            }
+        */
+        /*
+        for (int i = 0; i < ssd->sp.nchs; i++) {
+            ppa.g.ch = i;
+            struct ssd_channel *channel = get_ch(ssd, &ppa);
+            for (int j = 0; j < channel->nluns; j++) {
+                ppa.g.lun = j;
+                for (int k = 0; k < ssd->sp.blks_per_pl; k++) {
+                    ppa.g.blk = k;
+                    struct nand_block *block = get_blk(ssd, &ppa);
+                    printf("Channel %d, LUN %d, Block %d erase count: %d\n", i, j, k, block->erase_cnt);
+                }
+            }
+        }
+        */
+
+        exit(0);
+    }
     return 0;
 }
 
@@ -790,6 +874,7 @@ static uint64_t ssd_read(struct ssd *ssd, NvmeRequest *req)
             //printf("Invalid ppa,ch:%d,lun:%d,blk:%d,pl:%d,pg:%d,sec:%d\n",
             //ppa.g.ch, ppa.g.lun, ppa.g.blk, ppa.g.pl, ppa.g.pg, ppa.g.sec);
             continue;
+
         }
 
         struct nand_cmd srd;
@@ -799,7 +884,6 @@ static uint64_t ssd_read(struct ssd *ssd, NvmeRequest *req)
         sublat = ssd_advance_status(ssd, &ppa, &srd);
         maxlat = (sublat > maxlat) ? sublat : maxlat;
     }
-
     return maxlat;
 }
 
@@ -854,6 +938,8 @@ static uint64_t ssd_write(struct ssd *ssd, NvmeRequest *req)
         curlat = ssd_advance_status(ssd, &ppa, &swr);
         maxlat = (curlat > maxlat) ? curlat : maxlat;
     }
+    io_count_WRITE++;
+
 
     return maxlat;
 }
