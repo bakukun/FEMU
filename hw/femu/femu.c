@@ -68,9 +68,9 @@ static int nvme_start_ctrl(FemuCtrl *n)
     n->sqe_size = 1 << NVME_CC_IOSQES(n->bar.cc);
 
     nvme_init_cq(&n->admin_cq, n, n->bar.acq, 0, 0, NVME_AQA_ACQS(n->bar.aqa) +
-                 1, 1, 1);
+                                                    1, 1, 1);
     nvme_init_sq(&n->admin_sq, n, n->bar.asq, 0, 0, NVME_AQA_ASQS(n->bar.aqa) +
-                 1, NVME_Q_PRIO_HIGH, 1);
+                                                    1, NVME_Q_PRIO_HIGH, 1);
 
     /* Currently only used by FEMU ZNS extension */
     if (n->ext_ops.start_ctrl) {
@@ -83,59 +83,59 @@ static int nvme_start_ctrl(FemuCtrl *n)
 static void nvme_write_bar(FemuCtrl *n, hwaddr offset, uint64_t data, unsigned size)
 {
     switch (offset) {
-    case 0xc:
-        n->bar.intms |= data & 0xffffffff;
-        n->bar.intmc = n->bar.intms;
-        break;
-    case 0x10:
-        n->bar.intms &= ~(data & 0xffffffff);
-        n->bar.intmc = n->bar.intms;
-        break;
-    case 0x14:
-        /* If first sending data, then sending enable bit */
-        if (!NVME_CC_EN(data) && !NVME_CC_EN(n->bar.cc) &&
+        case 0xc:
+            n->bar.intms |= data & 0xffffffff;
+            n->bar.intmc = n->bar.intms;
+            break;
+        case 0x10:
+            n->bar.intms &= ~(data & 0xffffffff);
+            n->bar.intmc = n->bar.intms;
+            break;
+        case 0x14:
+            /* If first sending data, then sending enable bit */
+            if (!NVME_CC_EN(data) && !NVME_CC_EN(n->bar.cc) &&
                 !NVME_CC_SHN(data) && !NVME_CC_SHN(n->bar.cc))
-        {
-            n->bar.cc = data;
-        }
-
-        if (NVME_CC_EN(data) && !NVME_CC_EN(n->bar.cc)) {
-            n->bar.cc = data;
-            if (nvme_start_ctrl(n)) {
-                n->bar.csts = NVME_CSTS_FAILED;
-            } else {
-                n->bar.csts = NVME_CSTS_READY;
+            {
+                n->bar.cc = data;
             }
-        } else if (!NVME_CC_EN(data) && NVME_CC_EN(n->bar.cc)) {
-            nvme_clear_ctrl(n, false);
-            n->bar.csts &= ~NVME_CSTS_READY;
-        }
-        if (NVME_CC_SHN(data) && !(NVME_CC_SHN(n->bar.cc))) {
-            nvme_clear_ctrl(n, true);
-            n->bar.cc = data;
-            n->bar.csts |= NVME_CSTS_SHST_COMPLETE;
-        } else if (!NVME_CC_SHN(data) && NVME_CC_SHN(n->bar.cc)) {
-            n->bar.csts &= ~NVME_CSTS_SHST_COMPLETE;
-            n->bar.cc = data;
-        }
-        break;
-    case 0x24:
-        n->bar.aqa = data & 0xffffffff;
-        break;
-    case 0x28:
-        n->bar.asq = data;
-        break;
-    case 0x2c:
-        n->bar.asq |= data << 32;
-        break;
-    case 0x30:
-        n->bar.acq = data;
-        break;
-    case 0x34:
-        n->bar.acq |= data << 32;
-        break;
-    default:
-        break;
+
+            if (NVME_CC_EN(data) && !NVME_CC_EN(n->bar.cc)) {
+                n->bar.cc = data;
+                if (nvme_start_ctrl(n)) {
+                    n->bar.csts = NVME_CSTS_FAILED;
+                } else {
+                    n->bar.csts = NVME_CSTS_READY;
+                }
+            } else if (!NVME_CC_EN(data) && NVME_CC_EN(n->bar.cc)) {
+                nvme_clear_ctrl(n, false);
+                n->bar.csts &= ~NVME_CSTS_READY;
+            }
+            if (NVME_CC_SHN(data) && !(NVME_CC_SHN(n->bar.cc))) {
+                nvme_clear_ctrl(n, true);
+                n->bar.cc = data;
+                n->bar.csts |= NVME_CSTS_SHST_COMPLETE;
+            } else if (!NVME_CC_SHN(data) && NVME_CC_SHN(n->bar.cc)) {
+                n->bar.csts &= ~NVME_CSTS_SHST_COMPLETE;
+                n->bar.cc = data;
+            }
+            break;
+        case 0x24:
+            n->bar.aqa = data & 0xffffffff;
+            break;
+        case 0x28:
+            n->bar.asq = data;
+            break;
+        case 0x2c:
+            n->bar.asq |= data << 32;
+            break;
+        case 0x30:
+            n->bar.acq = data;
+            break;
+        case 0x34:
+            n->bar.acq |= data << 32;
+            break;
+        default:
+            break;
     }
 }
 
@@ -273,23 +273,23 @@ static uint64_t nvme_cmb_read(void *opaque, hwaddr addr, unsigned size)
 }
 
 static const MemoryRegionOps nvme_cmb_ops = {
-    .read = nvme_cmb_read,
-    .write = nvme_cmb_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
-    .impl = {
-        .min_access_size = 2,
-        .max_access_size = 8,
-    },
+        .read = nvme_cmb_read,
+        .write = nvme_cmb_write,
+        .endianness = DEVICE_LITTLE_ENDIAN,
+        .impl = {
+                .min_access_size = 2,
+                .max_access_size = 8,
+        },
 };
 
 static const MemoryRegionOps nvme_mmio_ops = {
-    .read = nvme_mmio_read,
-    .write = nvme_mmio_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
-    .impl = {
-        .min_access_size = 2,
-        .max_access_size = 8,
-    },
+        .read = nvme_mmio_read,
+        .write = nvme_mmio_write,
+        .endianness = DEVICE_LITTLE_ENDIAN,
+        .impl = {
+                .min_access_size = 2,
+                .max_access_size = 8,
+        },
 };
 
 static int nvme_check_constraints(FemuCtrl *n)
@@ -317,8 +317,8 @@ static int nvme_check_constraints(FemuCtrl *n)
         (n->oacs & ~(NVME_OACS_FORMAT)) ||
         (n->oncs & ~(NVME_ONCS_COMPARE | NVME_ONCS_WRITE_UNCORR |
                      NVME_ONCS_DSM | NVME_ONCS_WRITE_ZEROS))) {
-                         return -1;
-     }
+        return -1;
+    }
 
     return 0;
 }
@@ -436,7 +436,7 @@ static void nvme_init_ctrl(FemuCtrl *n)
     n->features.err_rec         = 0;
     n->features.volatile_wc     = n->vwc;
     n->features.nr_io_queues   = ((n->nr_io_queues - 1) | ((n->nr_io_queues -
-                                                              1) << 16));
+                                                            1) << 16));
     n->features.int_coalescing  = n->intc_thresh | (n->intc_time << 8);
     n->features.write_atomicity = 0;
     n->features.async_config    = 0x0;
@@ -493,7 +493,7 @@ static void nvme_init_pci(FemuCtrl *n)
     memory_region_init_io(&n->iomem, OBJECT(n), &nvme_mmio_ops, n, "nvme",
                           n->reg_size);
     pci_register_bar(&n->parent_obj, 0, PCI_BASE_ADDRESS_SPACE_MEMORY |
-                     PCI_BASE_ADDRESS_MEM_TYPE_64, &n->iomem);
+                                        PCI_BASE_ADDRESS_MEM_TYPE_64, &n->iomem);
     if (msix_init_exclusive_bar(&n->parent_obj, n->nr_io_queues + 1, 4, NULL)) {
         return;
     }
@@ -508,14 +508,14 @@ static int nvme_register_extensions(FemuCtrl *n)
 {
     if (OCSSD(n)) {
         switch (n->lver) {
-        case OCSSD12:
-            nvme_register_ocssd12(n);
-            break;
-        case OCSSD20:
-            nvme_register_ocssd20(n);
-            break;
-        default:
-            break;
+            case OCSSD12:
+                nvme_register_ocssd12(n);
+                break;
+            case OCSSD20:
+                nvme_register_ocssd20(n);
+                break;
+            default:
+                break;
         }
     } else if (NOSSD(n)) {
         nvme_register_nossd(n);
@@ -616,76 +616,78 @@ static void femu_exit(PCIDevice *pci_dev)
 }
 
 static Property femu_props[] = {
-    DEFINE_PROP_STRING("serial", FemuCtrl, serial),
-    DEFINE_PROP_UINT32("devsz_mb", FemuCtrl, memsz, 1024), /* in MB */
-    DEFINE_PROP_UINT32("namespaces", FemuCtrl, num_namespaces, 1),
-    DEFINE_PROP_UINT32("queues", FemuCtrl, nr_io_queues, 8),
-    DEFINE_PROP_UINT32("entries", FemuCtrl, max_q_ents, 0x7ff),
-    DEFINE_PROP_UINT8("multipoller_enabled", FemuCtrl, multipoller_enabled, 0),
-    DEFINE_PROP_UINT8("max_cqes", FemuCtrl, max_cqes, 0x4),
-    DEFINE_PROP_UINT8("max_sqes", FemuCtrl, max_sqes, 0x6),
-    DEFINE_PROP_UINT8("stride", FemuCtrl, db_stride, 0),
-    DEFINE_PROP_UINT8("aerl", FemuCtrl, aerl, 3),
-    DEFINE_PROP_UINT8("acl", FemuCtrl, acl, 3),
-    DEFINE_PROP_UINT8("elpe", FemuCtrl, elpe, 3),
-    DEFINE_PROP_UINT8("mdts", FemuCtrl, mdts, 10),
-    DEFINE_PROP_UINT8("cqr", FemuCtrl, cqr, 1),
-    DEFINE_PROP_UINT8("vwc", FemuCtrl, vwc, 0),
-    DEFINE_PROP_UINT8("intc", FemuCtrl, intc, 0),
-    DEFINE_PROP_UINT8("intc_thresh", FemuCtrl, intc_thresh, 0),
-    DEFINE_PROP_UINT8("intc_time", FemuCtrl, intc_time, 0),
-    DEFINE_PROP_UINT8("ms", FemuCtrl, ms, 16),
-    DEFINE_PROP_UINT8("ms_max", FemuCtrl, ms_max, 64),
-    DEFINE_PROP_UINT8("dlfeat", FemuCtrl, dlfeat, 1),
-    DEFINE_PROP_UINT8("mpsmin", FemuCtrl, mpsmin, 0),
-    DEFINE_PROP_UINT8("mpsmax", FemuCtrl, mpsmax, 0),
-    DEFINE_PROP_UINT8("nlbaf", FemuCtrl, nlbaf, 5),
-    DEFINE_PROP_UINT8("lba_index", FemuCtrl, lba_index, 0),
-    DEFINE_PROP_UINT8("extended", FemuCtrl, extended, 0),
-    DEFINE_PROP_UINT8("dpc", FemuCtrl, dpc, 0),
-    DEFINE_PROP_UINT8("dps", FemuCtrl, dps, 0),
-    DEFINE_PROP_UINT8("mc", FemuCtrl, mc, 0),
-    DEFINE_PROP_UINT8("meta", FemuCtrl, meta, 0),
-    DEFINE_PROP_UINT32("cmbsz", FemuCtrl, cmbsz, 0),
-    DEFINE_PROP_UINT32("cmbloc", FemuCtrl, cmbloc, 0),
-    DEFINE_PROP_UINT16("oacs", FemuCtrl, oacs, NVME_OACS_FORMAT),
-    DEFINE_PROP_UINT16("oncs", FemuCtrl, oncs, NVME_ONCS_DSM),
-    DEFINE_PROP_UINT16("vid", FemuCtrl, vid, 0x1d1d),
-    DEFINE_PROP_UINT16("did", FemuCtrl, did, 0x1f1f),
-    DEFINE_PROP_UINT8("femu_mode", FemuCtrl, femu_mode, FEMU_NOSSD_MODE),
-    DEFINE_PROP_UINT8("flash_type", FemuCtrl, flash_type, MLC),
-    DEFINE_PROP_UINT8("lver", FemuCtrl, lver, 0x2),
-    DEFINE_PROP_UINT16("lsec_size", FemuCtrl, oc_params.sec_size, 4096),
-    DEFINE_PROP_UINT8("lsecs_per_pg", FemuCtrl, oc_params.secs_per_pg, 4),
-    DEFINE_PROP_UINT16("lpgs_per_blk", FemuCtrl, oc_params.pgs_per_blk, 512),
-    DEFINE_PROP_UINT8("lmax_sec_per_rq", FemuCtrl, oc_params.max_sec_per_rq, 64),
-    DEFINE_PROP_UINT8("lnum_ch", FemuCtrl, oc_params.num_ch, 2),
-    DEFINE_PROP_UINT8("lnum_lun", FemuCtrl, oc_params.num_lun, 8),
-    DEFINE_PROP_UINT8("lnum_pln", FemuCtrl, oc_params.num_pln, 2),
-    DEFINE_PROP_UINT16("lmetasize", FemuCtrl, oc_params.sos, 16),
-    DEFINE_PROP_UINT8("zns_num_ch", FemuCtrl, zns_params.zns_num_ch, 2),
-    DEFINE_PROP_UINT8("zns_num_lun", FemuCtrl, zns_params.zns_num_lun, 4),
-    DEFINE_PROP_UINT64("zns_read", FemuCtrl, zns_params.zns_read, 40000),
-    DEFINE_PROP_UINT64("zns_write", FemuCtrl, zns_params.zns_write, 200000),
-    DEFINE_PROP_INT32("secsz", FemuCtrl, bb_params.secsz, 512),
-    DEFINE_PROP_INT32("secs_per_pg", FemuCtrl, bb_params.secs_per_pg, 8),
-    DEFINE_PROP_INT32("pgs_per_blk", FemuCtrl, bb_params.pgs_per_blk, 256),
-    DEFINE_PROP_INT32("blks_per_pl", FemuCtrl, bb_params.blks_per_pl, 256),
-    DEFINE_PROP_INT32("pls_per_lun", FemuCtrl, bb_params.pls_per_lun, 1),
-    DEFINE_PROP_INT32("luns_per_ch", FemuCtrl, bb_params.luns_per_ch, 8),
-    DEFINE_PROP_INT32("nchs", FemuCtrl, bb_params.nchs, 8),
-    DEFINE_PROP_INT32("pg_rd_lat", FemuCtrl, bb_params.pg_rd_lat, 40000),
-    DEFINE_PROP_INT32("pg_wr_lat", FemuCtrl, bb_params.pg_wr_lat, 200000),
-    DEFINE_PROP_INT32("blk_er_lat", FemuCtrl, bb_params.blk_er_lat, 2000000),
-    DEFINE_PROP_INT32("ch_xfer_lat", FemuCtrl, bb_params.ch_xfer_lat, 0),
-    DEFINE_PROP_INT32("gc_thres_pcent", FemuCtrl, bb_params.gc_thres_pcent, 75),
-    DEFINE_PROP_INT32("gc_thres_pcent_high", FemuCtrl, bb_params.gc_thres_pcent_high, 95),
-    DEFINE_PROP_END_OF_LIST(),
+        DEFINE_PROP_STRING("serial", FemuCtrl, serial),
+        DEFINE_PROP_UINT32("devsz_mb", FemuCtrl, memsz, 1024), /* in MB */
+        DEFINE_PROP_UINT32("namespaces", FemuCtrl, num_namespaces, 1),
+        DEFINE_PROP_UINT32("queues", FemuCtrl, nr_io_queues, 8),
+        DEFINE_PROP_UINT32("entries", FemuCtrl, max_q_ents, 0x7ff),
+        DEFINE_PROP_UINT8("multipoller_enabled", FemuCtrl, multipoller_enabled, 0),
+        DEFINE_PROP_UINT8("max_cqes", FemuCtrl, max_cqes, 0x4),
+        DEFINE_PROP_UINT8("max_sqes", FemuCtrl, max_sqes, 0x6),
+        DEFINE_PROP_UINT8("stride", FemuCtrl, db_stride, 0),
+        DEFINE_PROP_UINT8("aerl", FemuCtrl, aerl, 3),
+        DEFINE_PROP_UINT8("acl", FemuCtrl, acl, 3),
+        DEFINE_PROP_UINT8("elpe", FemuCtrl, elpe, 3),
+        DEFINE_PROP_UINT8("mdts", FemuCtrl, mdts, 10),
+        DEFINE_PROP_UINT8("cqr", FemuCtrl, cqr, 1),
+        DEFINE_PROP_UINT8("vwc", FemuCtrl, vwc, 0),
+        DEFINE_PROP_UINT8("intc", FemuCtrl, intc, 0),
+        DEFINE_PROP_UINT8("intc_thresh", FemuCtrl, intc_thresh, 0),
+        DEFINE_PROP_UINT8("intc_time", FemuCtrl, intc_time, 0),
+        DEFINE_PROP_UINT8("ms", FemuCtrl, ms, 16),
+        DEFINE_PROP_UINT8("ms_max", FemuCtrl, ms_max, 64),
+        DEFINE_PROP_UINT8("dlfeat", FemuCtrl, dlfeat, 1),
+        DEFINE_PROP_UINT8("mpsmin", FemuCtrl, mpsmin, 0),
+        DEFINE_PROP_UINT8("mpsmax", FemuCtrl, mpsmax, 0),
+        DEFINE_PROP_UINT8("nlbaf", FemuCtrl, nlbaf, 5),
+        DEFINE_PROP_UINT8("lba_index", FemuCtrl, lba_index, 0),
+        DEFINE_PROP_UINT8("extended", FemuCtrl, extended, 0),
+        DEFINE_PROP_UINT8("dpc", FemuCtrl, dpc, 0),
+        DEFINE_PROP_UINT8("dps", FemuCtrl, dps, 0),
+        DEFINE_PROP_UINT8("mc", FemuCtrl, mc, 0),
+        DEFINE_PROP_UINT8("meta", FemuCtrl, meta, 0),
+        DEFINE_PROP_UINT32("cmbsz", FemuCtrl, cmbsz, 0),
+        DEFINE_PROP_UINT32("cmbloc", FemuCtrl, cmbloc, 0),
+        DEFINE_PROP_UINT16("oacs", FemuCtrl, oacs, NVME_OACS_FORMAT),
+        DEFINE_PROP_UINT16("oncs", FemuCtrl, oncs, NVME_ONCS_DSM),
+        DEFINE_PROP_UINT16("vid", FemuCtrl, vid, 0x1d1d),
+        DEFINE_PROP_UINT16("did", FemuCtrl, did, 0x1f1f),
+        DEFINE_PROP_UINT8("femu_mode", FemuCtrl, femu_mode, FEMU_NOSSD_MODE),
+        DEFINE_PROP_UINT8("flash_type", FemuCtrl, flash_type, MLC),
+        DEFINE_PROP_UINT8("lver", FemuCtrl, lver, 0x2),
+        DEFINE_PROP_UINT16("lsec_size", FemuCtrl, oc_params.sec_size, 4096),
+        DEFINE_PROP_UINT8("lsecs_per_pg", FemuCtrl, oc_params.secs_per_pg, 4),
+        DEFINE_PROP_UINT16("lpgs_per_blk", FemuCtrl, oc_params.pgs_per_blk, 512),
+        DEFINE_PROP_UINT8("lmax_sec_per_rq", FemuCtrl, oc_params.max_sec_per_rq, 64),
+        DEFINE_PROP_UINT8("lnum_ch", FemuCtrl, oc_params.num_ch, 2),
+        DEFINE_PROP_UINT8("lnum_lun", FemuCtrl, oc_params.num_lun, 8),
+        DEFINE_PROP_UINT8("lnum_pln", FemuCtrl, oc_params.num_pln, 2),
+        DEFINE_PROP_UINT16("lmetasize", FemuCtrl, oc_params.sos, 16),
+        DEFINE_PROP_UINT8("zns_num_ch", FemuCtrl, zns_params.zns_num_ch, 2),
+        DEFINE_PROP_UINT8("zns_num_lun", FemuCtrl, zns_params.zns_num_lun, 4),
+        DEFINE_PROP_UINT64("zns_read", FemuCtrl, zns_params.zns_read, 40000),
+        DEFINE_PROP_UINT64("zns_write", FemuCtrl, zns_params.zns_write, 200000),
+        DEFINE_PROP_INT32("secsz", FemuCtrl, bb_params.secsz, 512),
+        DEFINE_PROP_INT32("secs_per_pg", FemuCtrl, bb_params.secs_per_pg, 8),
+        DEFINE_PROP_INT32("pgs_per_blk", FemuCtrl, bb_params.pgs_per_blk, 256),
+        DEFINE_PROP_INT32("blks_per_pl", FemuCtrl, bb_params.blks_per_pl, 256),
+        DEFINE_PROP_INT32("pls_per_lun", FemuCtrl, bb_params.pls_per_lun, 1),
+        DEFINE_PROP_INT32("luns_per_ch", FemuCtrl, bb_params.luns_per_ch, 8),
+        DEFINE_PROP_INT32("nchs", FemuCtrl, bb_params.nchs, 8),
+        DEFINE_PROP_INT32("pg_rd_lat", FemuCtrl, bb_params.pg_rd_lat, 40000),
+        DEFINE_PROP_INT32("pg_wr_lat", FemuCtrl, bb_params.pg_wr_lat, 200000),
+        DEFINE_PROP_INT32("blk_er_lat", FemuCtrl, bb_params.blk_er_lat, 2000000),
+        DEFINE_PROP_INT32("ch_xfer_lat", FemuCtrl, bb_params.ch_xfer_lat, 0),
+        DEFINE_PROP_INT32("gc_thres_pcent", FemuCtrl, bb_params.gc_thres_pcent, 75),
+        DEFINE_PROP_INT32("gc_thres_pcent_high", FemuCtrl, bb_params.gc_thres_pcent_high, 95),
+        DEFINE_PROP_INT32("gc_alpha", FemuCtrl, bb_params.gc_alpha, 100),
+        DEFINE_PROP_INT32("gc_beta", FemuCtrl, bb_params.gc_beta, 0),
+        DEFINE_PROP_END_OF_LIST(),
 };
 
 static const VMStateDescription femu_vmstate = {
-    .name = "femu",
-    .unmigratable = 1,
+        .name = "femu",
+        .unmigratable = 1,
 };
 
 static void femu_class_init(ObjectClass *oc, void *data)
@@ -707,14 +709,14 @@ static void femu_class_init(ObjectClass *oc, void *data)
 }
 
 static const TypeInfo femu_info = {
-    .name          = "femu",
-    .parent        = TYPE_PCI_DEVICE,
-    .instance_size = sizeof(FemuCtrl),
-    .class_init    = femu_class_init,
-    .interfaces = (InterfaceInfo[]) {
-        { INTERFACE_PCIE_DEVICE },
-        { }
-    },
+        .name          = "femu",
+        .parent        = TYPE_PCI_DEVICE,
+        .instance_size = sizeof(FemuCtrl),
+        .class_init    = femu_class_init,
+        .interfaces = (InterfaceInfo[]) {
+                { INTERFACE_PCIE_DEVICE },
+                { }
+        },
 };
 
 static void femu_register_types(void)
