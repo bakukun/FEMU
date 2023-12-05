@@ -5,6 +5,7 @@
 #define PQUEUE_MAX_PRIORITY 100000000
 #define DEAD_PE 64
 static int io_count_WRITE = 0;
+static bool erase_max = false;
 static pqueue_pri_t get_victim_priority(line *line, struct ssd *ssd);
 
 
@@ -767,14 +768,14 @@ static void mark_line_free(struct ssd *ssd, struct ppa *ppa)
 static int do_gc(struct ssd *ssd, bool force)
 {
     struct line *victim_line = NULL;
+    struct nand_block *blk = NULL;
+    struct line *line;
+    struct line_mgmt *lm = &ssd->lm;
     struct ssdparams *spp = &ssd->sp;
     struct nand_lun *lunp;
     struct ppa ppa;
     int ch, lun;
 
-    ppa.g.blk = victim_line->id;
-    ppa.g.ch = 0;
-    ppa.g.lun = 0;
 
     victim_line = select_victim_line(ssd, force);
     if (!victim_line) {
@@ -792,10 +793,14 @@ static int do_gc(struct ssd *ssd, bool force)
             ppa.g.ch = ch;
             ppa.g.lun = lun;
             ppa.g.pl = 0;
+            blk = get_blk(ssd, &ppa);
             lunp = get_lun(ssd, &ppa);
             clean_one_block(ssd, &ppa);
             mark_block_free(ssd, &ppa);
 
+            if(blk->erase_cnt >= DEAD_PE) {
+                erase_max = true;
+            }
             if (spp->enable_gc_delay) {
                 struct nand_cmd gce;
                 gce.type = GC_IO;
@@ -807,19 +812,20 @@ static int do_gc(struct ssd *ssd, bool force)
             lunp->gc_endtime = lunp->next_lun_avail_time;
         }
     }
-
     /* update line status */
     mark_line_free(ssd, &ppa);
 
-    // check erase_cnt 64
-    struct nand_block *blk = get_blk(ssd, &ppa);
-    if (blk->erase_cnt >= DEAD_PE) {
+    if (erase_max) {
         printf("[Erase count exceed 64]  ");
-        printf("[Total Write I/O count: %d]\n", io_count_WRITE);
-        for (int k = 0; k < ssd->sp.blks_per_pl; k++) {
-            ppa.g.blk = k;
-            struct nand_block *block = get_blk(ssd, &ppa);
-            printf("Line %d erase count: %d\r\n", k, block->erase_cnt);
+        printf("[Total Write I/O count: %d ]  ", io_count_WRITE);
+        for (int i = 0; i < lm->tt_lines; i++) {
+            line = &lm->lines[i];
+            ppa.g.blk = line->id;
+            ppa.g.ch = 0;
+            ppa.g.lun = 0;
+            ppa.g.pl = 0;
+            blk = get_blk(ssd,&ppa);
+            printf("line %d erase count: %d\n",i,blk->erase_cnt);
         }
         exit(0);
     }
